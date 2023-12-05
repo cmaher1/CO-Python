@@ -1,0 +1,39 @@
+import csv
+import os
+
+# Downloads directory path
+downloads_dir = r'C:\Users\camer\Downloads'
+
+# File paths
+input_csv_file = os.path.join(downloads_dir, 'ConvertedFile.csv')
+output_split_csv_file = os.path.join(downloads_dir, 'SplitFile.csv')
+
+# Function to split columns and write to a new CSV file
+def split_columns(input_file, output_file):
+    try:
+        with open(input_file, 'r', newline='', encoding='utf-16-le') as csv_file:
+            reader = csv.reader(csv_file)
+            
+            # Open a new CSV file for writing
+            with open(output_file, 'w', newline='', encoding='utf-8') as split_csv_file:
+                writer = csv.writer(split_csv_file)
+                
+                # Iterate through each row in the input CSV file, split and write desired columns to the output CSV file
+                for row in reader:
+                    if len(row) >= 2:  # Check if there are at least two columns
+                        vanid_list = row[0].split(',')
+                        dwid_list = row[1].split(',')
+                        
+                        # Write the data into rows considering the maximum number of items in the split lists
+                        max_length = max(len(vanid_list), len(dwid_list))
+                        for i in range(max_length):
+                            vanid_value = vanid_list[i].strip() if i < len(vanid_list) else ''
+                            dwid_value = dwid_list[i].strip() if i < len(dwid_list) else ''
+                            writer.writerow([vanid_value, dwid_value])
+        
+        print("Columns split successfully using encoding: utf-16-le")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Call the function to split columns and write to a new CSV file
+split_columns(input_csv_file, output_split_csv_file)

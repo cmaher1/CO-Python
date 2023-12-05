@@ -1,0 +1,24 @@
+import csv
+import os
+
+# Downloads directory path
+downloads_dir = r'C:\Users\camer\Downloads'
+
+# File paths
+input_text_file = os.path.join(downloads_dir, 'StandardText20231204-16510268532.txt')
+output_csv_file = os.path.join(downloads_dir, 'ConvertedFile.csv')
+
+# Specify the delimiter used in the text file (e.g., comma, tab, etc.)
+delimiter = '\t'  # Replace with the actual delimiter used in your text file
+
+# Open the text file for reading
+with open(input_text_file, 'r') as txt_file:
+    reader = csv.reader(txt_file, delimiter=delimiter)
+
+    # Open a CSV file for writing
+    with open(output_csv_file, 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+
+        # Iterate through each row in the text file and write it to the CSV file
+        for row in reader:
+            writer.writerow(row)

@@ -1,0 +1,37 @@
+import csv
+import os
+
+# Downloads directory path
+downloads_dir = r'C:\Users\camer\Downloads'
+
+# File paths
+input_split_csv_file = os.path.join(downloads_dir, 'SplitFile.csv')
+output_cleaned_csv_file = os.path.join(downloads_dir, 'CleanedFile.csv')
+
+# Function to clean DWID column and write to a new CSV file
+def clean_dwid_column(input_file, output_file):
+    try:
+        with open(input_file, 'r', newline='', encoding='utf-8') as csv_file:
+            reader = csv.reader(csv_file)
+            
+            # Open a new CSV file for writing
+            with open(output_file, 'w', newline='', encoding='utf-8') as cleaned_csv_file:
+                writer = csv.writer(cleaned_csv_file)
+                
+                # Iterate through each row in the input CSV file, clean the DWID column, and write to the output CSV file
+                for row in reader:
+                    vanid = row[0]  # Assuming the DWID column is at index 1
+                    dwid = row[1] if len(row) > 1 else ''  # Assuming the DWID column is at index 1
+                    
+                    # Cleaning the DWID column to keep only alphanumeric characters
+                    cleaned_dwid = ''.join(char for char in dwid if char.isalnum())
+                    
+                    # Write the data into rows
+                    writer.writerow([vanid, cleaned_dwid])
+        
+        print("DWID column cleaned successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Call the function to clean DWID column and write to a new CSV file
+clean_dwid_column(input_split_csv_file, output_cleaned_csv_file)

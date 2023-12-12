@@ -1,0 +1,15 @@
+import pandas as pd
+
+# File paths
+input_file = r'C:\Users\camer\Downloads\Voted_2023_Real.csv'
+output_file = r'C:\Users\camer\Downloads\Voted_2023_Real_DWID.csv'
+
+# Read the CSV file
+data = pd.read_csv(input_file)
+
+# Drop 'Voter File VANID' column if it exists
+if 'Voter File VANID' in data.columns:
+    data.drop(columns=['Voter File VANID'], inplace=True)
+
+# Save the modified data with only 'DWID' column
+data.to_csv(output_file, columns=['DWID'], index=False)

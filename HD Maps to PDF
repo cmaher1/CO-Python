@@ -1,0 +1,52 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import os
+
+# Define the base URL of the website
+base_url = "https://redistricting.colorado.gov"
+# The specific page that lists the PDF links
+target_url = base_url + "/content/hd-map-data"
+
+# Create a session to keep connections alive
+session = requests.Session()
+response = session.get(target_url)
+
+# Check if the request was successful
+if response.status_code == 200:
+    # Parse the HTML content of the page
+    soup = BeautifulSoup(response.content, 'html.parser')
+    # Find all 'a' tags that contain the PDF links
+    # Note: Adjust the regex if the text to search is different or more specific
+    links = soup.find_all('a', href=True, string=re.compile('^download 2021_House_District_'))
+
+    # Directory where you want to save the PDFs
+    download_dir = 'Downloads/House_District_Maps'
+    # Ensure the download directory exists
+    os.makedirs(download_dir, exist_ok=True)
+
+    for link in links:
+        # Extract the href attribute
+        pdf_relative_url = link['href']
+        # Construct the full URL
+        pdf_url = base_url + pdf_relative_url
+        # Extract PDF file name from the URL
+        pdf_filename = pdf_url.split('/')[-1]
+
+        # Send a GET request to download the PDF
+        pdf_response = session.get(pdf_url)
+
+        if pdf_response.status_code == 200:
+            # Define the path to save the PDF
+            pdf_path = os.path.join(download_dir, pdf_filename)
+            # Write the PDF content to a file
+            with open(pdf_path, 'wb') as pdf_file:
+                pdf_file.write(pdf_response.content)
+            print(f"Downloaded {pdf_filename}")
+        else:
+            print(f"Failed to download {pdf_filename}")
+else:
+    print("Failed to retrieve the webpage")
+
+# Close the session
+session.close()

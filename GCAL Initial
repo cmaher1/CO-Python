@@ -1,0 +1,47 @@
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+
+# Path to your service account JSON file
+SERVICE_ACCOUNT_FILE = 'C:\\Users\\camer\\Downloads\\credentials.json'  # Update with your actual path
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+# Authenticate and build the service
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+service = build('calendar', 'v3', credentials=credentials)
+
+# Your Calendar ID
+calendar_id = 'cameronmaher53@gmail.com'  # Replace with your actual calendar ID
+
+# Function to create an event
+def create_event(service, calendar_id, start_time, end_time, summary, recurrence=None):
+    event = {
+        'summary': summary,
+        'start': {
+            'dateTime': start_time,
+            'timeZone': 'America/Denver',  # Adjust time zone as needed
+        },
+        'end': {
+            'dateTime': end_time,
+            'timeZone': 'America/Denver',  # Adjust time zone as needed
+        }
+    }
+    
+    if recurrence:
+        event['recurrence'] = recurrence
+
+    try:
+        event = service.events().insert(calendarId=calendar_id, body=event).execute()
+        print(f"Event created: {event.get('htmlLink')}")
+    except Exception as e:
+        print(f"Error creating event: {e}")
+
+# Example event creation
+start_time = (datetime.now() + timedelta(minutes=15)).isoformat()  # Start from 15 minutes from now
+end_time = (datetime.now() + timedelta(hours=1)).isoformat()  # End time 1 hour later
+
+create_event(service, calendar_id, start_time, end_time, 'Sample Event')
+
+print("Event creation process completed.")

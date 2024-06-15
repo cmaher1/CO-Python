@@ -238,3 +238,69 @@ for month in range(1, 13):  # January to December
         print(f"Could not find the third Friday in year {year}, month {month}")
 
 print("Event creation process completed.")
+
+
+-----------------------------------------
+
+
+Version2
+
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+
+# Path to your service account JSON file
+SERVICE_ACCOUNT_FILE = 'C:\\Users\\camer\\Downloads\\credentials.json'  # Update with your actual path
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+# Authenticate and build the service
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+service = build('calendar', 'v3', credentials=credentials)
+
+# Your Calendar ID
+calendar_id = 'cameronmaher53@gmail.com'  # Replace with your actual calendar ID
+
+# Function to delete events containing a specific keyword in the title
+def delete_events(service, calendar_id, keyword):
+    try:
+        page_token = None
+        now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        time_max = (datetime.utcnow() + timedelta(days=365 * 10)).isoformat() + 'Z'  # Up to 10 years in the future
+
+        while True:
+            events_result = service.events().list(
+                calendarId=calendar_id,
+                q=keyword,
+                timeMin=now,
+                timeMax=time_max,
+                singleEvents=True,
+                pageToken=page_token
+            ).execute()
+            
+            events = events_result.get('items', [])
+
+            if not events:
+                print(f"No events found with keyword '{keyword}'")
+                return
+
+            for event in events:
+                event_id = event['id']
+                event_summary = event.get('summary', 'No summary')
+                print(f"Found event: {event_summary} (ID: {event_id})")
+                if keyword.lower() in event_summary.lower():
+                    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+                    print(f"Event deleted: {event_summary} (ID: {event_id})")
+
+            page_token = events_result.get('nextPageToken')
+            if not page_token:
+                break
+
+    except Exception as e:
+        print(f"Error deleting events: {e}")
+
+# Delete all events with 'Doctor' in the title
+delete_events(service, calendar_id, 'Doctor')
+
+print("Event deletion process completed.")

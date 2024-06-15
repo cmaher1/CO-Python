@@ -1,0 +1,40 @@
+#MAY HAVE TO CLEAR CACHE FOR SOME REASON
+
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+# Path to your service account JSON file
+SERVICE_ACCOUNT_FILE = 'C:\\Users\\camer\\Downloads\\credentials.json'  # Update with your actual path
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+# Authenticate and build the service
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+service = build('calendar', 'v3', credentials=credentials)
+
+# Your Calendar ID
+calendar_id = 'cameronmaher53@gmail.com'  # Replace with your actual calendar ID
+
+# Function to delete events containing a specific keyword in the title
+def delete_events(service, calendar_id, keyword):
+    try:
+        events_result = service.events().list(calendarId=calendar_id, q=keyword).execute()
+        events = events_result.get('items', [])
+
+        if not events:
+            print(f"No events found with keyword '{keyword}'")
+            return
+
+        for event in events:
+            event_id = event['id']
+            service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            print(f"Event with keyword '{keyword}' deleted: {event_id}")
+
+    except Exception as e:
+        print(f"Error deleting events: {e}")
+
+# Delete all events with 'Doctor' in the title
+delete_events(service, calendar_id, 'Doctor')
+
+print("Event deletion process completed.")

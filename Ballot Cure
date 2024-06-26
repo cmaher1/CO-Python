@@ -1,0 +1,55 @@
+import csv
+import os
+from datetime import datetime
+
+# Downloads directory path
+downloads_dir = r'C:\Users\camer\Downloads'
+
+# Get today's date
+today_date = datetime.now().strftime('%Y%m%d')
+
+# Get the most recent .txt file in the Downloads directory
+def get_most_recent_txt_file(directory):
+    txt_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+    if not txt_files:
+        raise FileNotFoundError("No .txt files found in the directory.")
+    most_recent_file = max(txt_files, key=lambda f: os.path.getmtime(os.path.join(directory, f)))
+    return os.path.join(directory, most_recent_file)
+
+# File paths
+input_text_file = get_most_recent_txt_file(downloads_dir)
+output_csv_file = os.path.join(downloads_dir, f'ConvertedFile_{today_date}.csv')
+
+# Specify the delimiter used in the text file (e.g., comma, tab, etc.)
+delimiter = '|'  # The delimiter used in your text file
+
+# Open the text file for reading
+with open(input_text_file, 'r') as txt_file:
+    # Read the header to find the indices of the required columns
+    header = txt_file.readline().strip().split(delimiter)
+    
+    try:
+        voter_id_index = header.index('VOTER_ID')
+        status_index = header.index('STATUS')
+        status_reason_index = header.index('STATUS_REASON')
+    except ValueError as e:
+        raise ValueError(f"Required columns are missing: {e}")
+
+    # Open a CSV file for writing
+    with open(output_csv_file, 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        
+        # Write the new header to the CSV file
+        writer.writerow(['VOTER_ID', 'STATUS', 'STATUS_REASON'])
+
+        # Iterate through each line in the text file
+        for line in txt_file:
+            # Split the line into columns based on the delimiter
+            columns = line.strip().split(delimiter)
+            
+            # Check if the STATUS column is 'Accepted'
+            if columns[status_index].strip() != 'Accepted':
+                # Write only the required columns to the CSV file if STATUS is not 'Accepted'
+                writer.writerow([columns[voter_id_index].strip(), columns[status_index].strip(), columns[status_reason_index].strip()])
+
+print("Conversion completed successfully.")

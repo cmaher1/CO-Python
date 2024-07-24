@@ -1,0 +1,164 @@
+FIRST create .yml file like
+ftp:
+  server: "ftps.sos.state.co.us"
+  user: "americavotes"
+  pass: "Americavotes2024@"
+  dir: "/"
+
+THEN
+
+import ftplib
+import os
+import yaml
+import zipfile
+import glob
+import pandas as pd
+from datetime import datetime
+from google.cloud import bigquery
+
+# Load FTP credentials from YAML file
+def load_credentials(yaml_file):
+    with open(yaml_file, 'r') as file:
+        return yaml.safe_load(file)
+
+# Path to the YAML file
+yaml_file = 'C:\\Users\\camer\\Downloads\\credentials.yml'
+try:
+    creds = load_credentials(yaml_file)
+    print("Loaded credentials:", creds)
+except yaml.YAMLError as e:
+    print(f"Error loading YAML file: {e}")
+    raise
+
+# FTP server details
+FTP_SERVER = creds['ftp']['server']
+FTP_USER = creds['ftp']['user']
+FTP_PASS = creds['ftp']['pass']
+FTP_DIR = creds['ftp']['dir']
+
+# Directory and file to download
+DIRECTORY_TO_DOWNLOAD = 'CE-068c_Voters_With_Returned_Ballot_List_Public'
+FILE_TO_DOWNLOAD = 'CE-068c_Voters_With_Returned_Ballot_List_Public_25Jun_600021574_null.zip'
+
+# Local directory
+LOCAL_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+
+def clear_downloads_folder():
+    # Delete specific files: the downloaded ZIP file and the extracted text file
+    zip_files = glob.glob(os.path.join(LOCAL_DIR, "*.zip"))
+    txt_files = glob.glob(os.path.join(LOCAL_DIR, "*.txt"))
+    for file in zip_files + txt_files:
+        try:
+            os.remove(file)
+        except Exception as e:
+            print(f"Error removing file {file}: {e}")
+
+def download_file(directory, filename):
+    try:
+        # Connect to FTP server using TLS
+        ftp = ftplib.FTP_TLS(FTP_SERVER)  # Use FTP_TLS for FTPS
+        ftp.set_debuglevel(2)  # Enable debug output for more details
+        ftp.auth()  # Explicitly start TLS
+        ftp.prot_p()  # Secure data connection
+        ftp.login(FTP_USER, FTP_PASS)
+        ftp.cwd(FTP_DIR)
+
+        # Change to the specified directory
+        ftp.cwd(directory)
+
+        # Download the specific file
+        local_filepath = os.path.join(LOCAL_DIR, filename)
+        with open(local_filepath, 'wb') as local_file:
+            ftp.retrbinary(f'RETR {filename}', local_file.write)
+        print(f"Downloaded {filename} to {local_filepath}")
+
+        # Close the connection
+        ftp.quit()
+
+        # Unzip the file
+        with zipfile.ZipFile(local_filepath, 'r') as zip_ref:
+            zip_ref.extractall(LOCAL_DIR)
+        print(f"Unzipped {filename} to {LOCAL_DIR}")
+
+        # Return the path of the unzipped text file
+        extracted_files = zip_ref.namelist()
+        if len(extracted_files) == 1:
+            return os.path.join(LOCAL_DIR, extracted_files[0])
+        else:
+            raise Exception("Unexpected number of files in the ZIP archive.")
+
+    except ftplib.all_errors as e:
+        print(f"FTP error: {e}")
+    except zipfile.BadZipFile as e:
+        print(f"Error unzipping file: {e}")
+
+def process_txt_file(txt_file_path):
+    try:
+        print("Attempting to read the file with latin1 encoding...")
+        df = pd.read_csv(txt_file_path, delimiter='|', header=0, encoding='latin1', low_memory=False)
+
+        # Define the column names to keep
+        required_columns = ["VOTER_ID", "COUNTY", "YOB", "GENDER", "PARTY", "PRECINCT", "VOTE_METHOD", 
+                            "VOTED_PARTY", "MAIL_BALLOT_SENT_DATE", "MAIL_BALLOT_RECEIVE_DATE", "IN_PERSON_VOTE_DATE"]
+
+        # Ensure we only select columns that exist in the DataFrame
+        selected_columns = [col for col in required_columns if col in df.columns]
+        selected_df = df[selected_columns]
+
+        # Convert MAIL_BALLOT_SENT_DATE and MAIL_BALLOT_RECEIVE_DATE to YYYY-MM-DD format
+        date_columns = ["MAIL_BALLOT_SENT_DATE", "MAIL_BALLOT_RECEIVE_DATE"]
+        for col in date_columns:
+            if col in selected_df.columns:
+                selected_df[col] = pd.to_datetime(selected_df[col], errors='coerce').dt.strftime('%Y-%m-%d')
+
+        # Get today's date in YYYY-MM-DD format
+        today = datetime.today().strftime('%Y-%m-%d')
+        
+        # Save the selected columns to a new CSV file with today's date in the name
+        csv_file_path = os.path.join(LOCAL_DIR, f"Returned_Ballots_{today}.csv")
+        selected_df.to_csv(csv_file_path, index=False)
+        print(f"Selected columns saved to CSV file: {csv_file_path}")
+
+        # Upload the CSV to BigQuery
+        upload_to_bigquery(csv_file_path)
+
+    except Exception as e:
+        print(f"Failed to read the file with encoding latin1: {e}")
+
+def upload_to_bigquery(csv_file_path):
+    try:
+        # Set up the BigQuery client
+        client = bigquery.Client()
+
+        # Define your dataset and table names
+        dataset_id = 'your_dataset_id'  # Replace with your dataset ID
+        table_id = 'your_table_id'  # Replace with your table ID
+
+        # Set the table reference
+        table_ref = client.dataset(dataset_id).table(table_id)
+
+        # Define the job configuration
+        job_config = bigquery.LoadJobConfig(
+            source_format=bigquery.SourceFormat.CSV,
+            skip_leading_rows=1,  # Skip the header row
+            autodetect=True,  # Automatically infer the schema
+        )
+
+        # Load the data from the CSV file into BigQuery
+        with open(csv_file_path, 'rb') as csv_file:
+            load_job = client.load_table_from_file(csv_file, table_ref, job_config=job_config)
+
+        # Wait for the job to complete
+        load_job.result()
+
+        print(f"CSV file {csv_file_path} uploaded to BigQuery table {table_id} in dataset {dataset_id}")
+
+    except Exception as e:
+        print(f"Error uploading CSV to BigQuery: {e}")
+
+if __name__ == "__main__":
+    clear_downloads_folder()
+    txt_file_path = download_file(DIRECTORY_TO_DOWNLOAD, FILE_TO_DOWNLOAD)
+    if txt_file_path:
+        process_txt_file(txt_file_path)
+        clear_downloads_folder()  # Clear the downloaded and extracted files after processing

@@ -1,0 +1,23 @@
+import pandas as pd
+import os
+
+# Define the input file path
+downloads_folder = os.path.expanduser("~\\Downloads")
+input_file = os.path.join(downloads_folder, "StandardText20240723-5898075124.xls")
+output_file = os.path.join(downloads_folder, "StandardText20240723-5898075124.csv")
+
+try:
+    # Attempt to read the file as a CSV with appropriate delimiter and encoding
+    df = pd.read_csv(input_file, delimiter='\t', encoding='utf-16', engine='python')
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(output_file, index=False)
+
+    print(f"File successfully converted and saved to '{output_file}'")
+
+except FileNotFoundError:
+    print(f"Error: The file '{input_file}' does not exist.")
+except pd.errors.ParserError:
+    print("Error: The file could not be parsed. Please check the delimiter and encoding.")
+except Exception as e:
+    print(f"Error: {e}")

@@ -1,0 +1,67 @@
+import ftplib
+import os
+import yaml
+import zipfile
+
+# Load FTP credentials from YAML file
+def load_credentials(yaml_file):
+    with open(yaml_file, 'r') as file:
+        return yaml.safe_load(file)
+
+# Path to the YAML file
+yaml_file = 'C:\\Users\\camer\\Downloads\\credentials.yml'
+try:
+    creds = load_credentials(yaml_file)
+    print("Loaded credentials:", creds)
+except yaml.YAMLError as e:
+    print(f"Error loading YAML file: {e}")
+    raise
+
+# FTP server details
+FTP_SERVER = creds['ftp']['server']
+FTP_USER = creds['ftp']['user']
+FTP_PASS = creds['ftp']['pass']
+FTP_DIR = creds['ftp']['dir']
+
+# Directory and file to download
+DIRECTORY_TO_DOWNLOAD = 'CE-068c_Voters_With_Returned_Ballot_List_Public'
+FILE_TO_DOWNLOAD = 'CE-068c_Voters_With_Returned_Ballot_List_Public_25Jun_600021574_null.zip'
+
+# Local directory
+LOCAL_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+
+def download_file(directory, filename):
+    try:
+        # Connect to FTP server using TLS
+        ftp = ftplib.FTP_TLS(FTP_SERVER)  # Use FTP_TLS for FTPS
+        ftp.set_debuglevel(2)  # Enable debug output for more details
+        ftp.auth()  # Explicitly start TLS
+        ftp.prot_p()  # Secure data connection
+        ftp.login(FTP_USER, FTP_PASS)
+        ftp.cwd(FTP_DIR)
+
+        # Change to the specified directory
+        ftp.cwd(directory)
+
+        # Download the specific file
+        local_filepath = os.path.join(LOCAL_DIR, filename)
+        with open(local_filepath, 'wb') as local_file:
+            ftp.retrbinary(f'RETR {filename}', local_file.write)
+        print(f"Downloaded {filename} to {local_filepath}")
+
+        # Close the connection
+        ftp.quit()
+
+        # Unzip the file
+        with zipfile.ZipFile(local_filepath, 'r') as zip_ref:
+            zip_ref.extractall(LOCAL_DIR)
+        print(f"Unzipped {filename} to {LOCAL_DIR}")
+
+    except ftplib.all_errors as e:
+        print(f"FTP error: {e}")
+    except zipfile.BadZipFile as e:
+        print(f"Error unzipping file: {e}")
+
+if __name__ == "__main__":
+    download_file(DIRECTORY_TO_DOWNLOAD, FILE_TO_DOWNLOAD)
+    

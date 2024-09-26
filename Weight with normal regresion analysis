@@ -1,0 +1,144 @@
+import pandas as pd
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+# Load the dataset
+file_path = "C:\\Users\\camer\\Downloads\\bq-results-20240727-013741-1722044817900.csv"
+data = pd.read_csv(file_path)
+
+# Print the first few rows and data summary for inspection
+print("First few rows of the data:")
+print(data.head())
+print("\nData summary:")
+print(data.info())
+
+# Handle missing values
+data = data.dropna(subset=['catalist_voteprop24', 'catalist_vci24', 'distinct_attempts'])
+data['catalist_voteprop24'].fillna(0, inplace=True)
+data['catalist_vci24'].fillna(0, inplace=True)
+
+# Convert categorical variables to numerical codes
+data['gender_code'] = data['gender'].map({'female': 1, 'male': 0})
+data['race_code'] = data['race'].map({
+    'unknown': 2,
+    'nativeAmerican': 3,
+    'caucasian': 4,
+    'black': 5,
+    'hispanic': 6
+})
+
+# Ensure there are no infinite values
+data.replace([float('inf'), -float('inf')], pd.NA, inplace=True)
+data.dropna(inplace=True)
+
+# Prepare the features and target variable
+X = data[['catalist_voteprop24', 'catalist_vci24', 'distinct_attempts', 'race_code', 'gender_code']]
+y = data['Voted']
+
+# Add a constant to the features for the intercept term
+X = sm.add_constant(X)
+
+# Fit the logistic regression model
+model = sm.Logit(y, X)
+result = model.fit()
+
+# Calculate the persuasibility score
+data['persuasibility_score'] = result.predict(X)
+
+# Rank the persuasibility scores
+data['rank'] = data['persuasibility_score'].rank(ascending=False)
+
+# Normalize the ranks to a 0-100 scale
+data['persuasibility_score_scaled'] = (data['rank'] - 1) / (len(data) - 1) * 100
+
+# Sort the data by the scaled persuasibility score
+data_sorted = data.sort_values(by='persuasibility_score_scaled', ascending=False)
+
+# Print the first few rows with scaled persuasibility scores
+print("\nFirst few rows with persuasibility scores:")
+print(data_sorted[['dwid', 'persuasibility_score_scaled']].head())
+
+# Print a set of random samples to check the distribution
+print("\n10 Random Samples with Persuasibility Scores:")
+print(data_sorted[['dwid', 'persuasibility_score_scaled']].sample(10))
+
+# Plot the distribution of persuasibility scores
+plt.figure(figsize=(10, 6))
+plt.hist(data['persuasibility_score_scaled'], bins=100, edgecolor='k', alpha=0.7)
+plt.title('Distribution of Persuasibility Scores')
+plt.xlabel('Persuasibility Score')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+import pandas as pd
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+# Load the dataset
+file_path = "C:\\Users\\camer\\Downloads\\bq-results-20240727-013741-1722044817900.csv"
+data = pd.read_csv(file_path)
+
+# Print the first few rows and data summary for inspection
+print("First few rows of the data:")
+print(data.head())
+print("\nData summary:")
+print(data.info())
+
+# Handle missing values
+data = data.dropna(subset=['catalist_voteprop24', 'catalist_vci24', 'distinct_attempts'])
+data['catalist_voteprop24'].fillna(0, inplace=True)
+data['catalist_vci24'].fillna(0, inplace=True)
+
+# Convert categorical variables to numerical codes
+data['gender_code'] = data['gender'].map({'female': 1, 'male': 0})
+data['race_code'] = data['race'].map({
+    'unknown': 2,
+    'nativeAmerican': 3,
+    'caucasian': 4,
+    'black': 5,
+    'hispanic': 6
+})
+
+# Ensure there are no infinite values
+data.replace([float('inf'), -float('inf')], pd.NA, inplace=True)
+data.dropna(inplace=True)
+
+# Prepare the features and target variable
+X = data[['catalist_voteprop24', 'catalist_vci24', 'distinct_attempts', 'race_code', 'gender_code']]
+y = data['Voted']
+
+# Add a constant to the features for the intercept term
+X = sm.add_constant(X)
+
+# Fit the logistic regression model
+model = sm.Logit(y, X)
+result = model.fit()
+
+# Calculate the persuasibility score
+data['persuasibility_score'] = result.predict(X)
+
+# Rank the persuasibility scores
+data['rank'] = data['persuasibility_score'].rank(ascending=False)
+
+# Normalize the ranks to a 0-100 scale
+data['persuasibility_score_scaled'] = (data['rank'] - 1) / (len(data) - 1) * 100
+
+# Sort the data by the scaled persuasibility score
+data_sorted = data.sort_values(by='persuasibility_score_scaled', ascending=False)
+
+# Print the first few rows with scaled persuasibility scores
+print("\nFirst few rows with persuasibility scores:")
+print(data_sorted[['dwid', 'persuasibility_score_scaled']].head())
+
+# Print a set of random samples to check the distribution
+print("\n10 Random Samples with Persuasibility Scores:")
+print(data_sorted[['dwid', 'persuasibility_score_scaled']].sample(10))
+
+# Plot the distribution of persuasibility scores
+plt.figure(figsize=(10, 6))
+plt.hist(data['persuasibility_score_scaled'], bins=100, edgecolor='k', alpha=0.7)
+plt.title('Distribution of Persuadability Scores')
+plt.xlabel('Persuasibility Score')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()

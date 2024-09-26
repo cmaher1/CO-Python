@@ -1,0 +1,100 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+
+# Sample Data (replace with your actual dataset)
+data = {
+    'target_variable': [70, 82, 88, 95, 78],
+    'step1_percentage': [52.10, 48.25, 55.75, 60.10, 49.50],
+    'BIPOC_percentage': [35.25, 40.75, 32.50, 45.00, 37.75],
+    'canvassability_weight': [0.75, 0.85, 0.65, 0.95, 0.70]
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Define independent variables and target variable
+X = df[['step1_percentage', 'BIPOC_percentage', 'canvassability_weight']]
+y = df['target_variable']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Train a Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Get feature importances
+importances = rf_model.feature_importances_
+print("Feature Importances:", importances)
+
+# Normalize importances to sum to 1 (for use as weights)
+normalized_importances = importances / importances.sum()
+print("Normalized Feature Importances:", normalized_importances)
+
+# Calculate final scores using the normalized weights
+train_final_score = (X_train['step1_percentage'] * normalized_importances[0] +
+                     X_train['BIPOC_percentage'] * normalized_importances[1] +
+                     X_train['canvassability_weight'] * normalized_importances[2])
+
+test_final_score = (X_test['step1_percentage'] * normalized_importances[0] +
+                    X_test['BIPOC_percentage'] * normalized_importances[1] +
+                    X_test['canvassability_weight'] * normalized_importances[2])
+
+# Evaluate performance
+train_performance = r2_score(y_train, train_final_score)
+test_performance = r2_score(y_test, test_final_score)
+
+print("Train Performance (R^2):", train_performance)
+print("Test Performance (R^2):", test_performance)
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+
+# Sample Data (replace with your actual dataset)
+data = {
+    'target_variable': [70, 82, 88, 95, 78],
+    'step1_percentage': [52.10, 48.25, 55.75, 60.10, 49.50],
+    'BIPOC_percentage': [35.25, 40.75, 32.50, 45.00, 37.75],
+    'canvassability_weight': [0.75, 0.85, 0.65, 0.95, 0.70]
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Define independent variables and target variable
+X = df[['step1_percentage', 'BIPOC_percentage', 'canvassability_weight']]
+y = df['target_variable']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Train a Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Get feature importances
+importances = rf_model.feature_importances_
+print("Feature Importances:", importances)
+
+# Normalize importances to sum to 1 (for use as weights)
+normalized_importances = importances / importances.sum()
+print("Normalized Feature Importances:", normalized_importances)
+
+# Calculate final scores using the normalized weights
+train_final_score = (X_train['step1_percentage'] * normalized_importances[0] +
+                     X_train['BIPOC_percentage'] * normalized_importances[1] +
+                     X_train['canvassability_weight'] * normalized_importances[2])
+
+test_final_score = (X_test['step1_percentage'] * normalized_importances[0] +
+                    X_test['BIPOC_percentage'] * normalized_importances[1] +
+                    X_test['canvassability_weight'] * normalized_importances[2])
+
+# Evaluate performance
+train_performance = r2_score(y_train, train_final_score)
+test_performance = r2_score(y_test, test_final_score)
+
+print("Train Performance (R^2):", train_performance)
+print("Test Performance (R^2):", test_performance)

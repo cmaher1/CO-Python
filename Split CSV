@@ -1,0 +1,35 @@
+import os
+import pandas as pd
+
+# Define the file path
+file_path = r"C:\Users\camer\Downloads\good_targets_0000_part_00_combine.csv"
+
+# Read the CSV file into a DataFrame
+df = pd.read_csv(file_path)
+
+# Maximum number of rows per part
+max_rows_per_file = 999999
+
+# Get the total number of rows
+total_rows = len(df)
+
+# Calculate the number of parts required
+num_parts = (total_rows // max_rows_per_file) + (1 if total_rows % max_rows_per_file > 0 else 0)
+
+# Split the DataFrame and save each part
+for i in range(num_parts):
+    start_row = i * max_rows_per_file
+    end_row = min((i + 1) * max_rows_per_file, total_rows)
+    
+    # Create a sub-DataFrame for this part
+    df_part = df.iloc[start_row:end_row]
+    
+    # Define the output file path
+    output_file = os.path.join(os.path.dirname(file_path), f"good_targets_part_{i + 1}.csv")
+    
+    # Save the part to a CSV file
+    df_part.to_csv(output_file, index=False)
+    
+    print(f"Saved part {i + 1}: {output_file} ({len(df_part)} rows)")
+
+print(f"File has been split into {num_parts} parts.")

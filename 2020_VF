@@ -1,0 +1,146 @@
+import ftplib
+import os
+import yaml
+import re
+import pandas as pd
+from datetime import datetime
+import glob
+import zipfile
+
+# Load FTP credentials from YAML file
+def load_credentials(yaml_file):
+    with open(yaml_file, 'r') as file:
+        return yaml.safe_load(file)
+
+# Path to the YAML file
+yaml_file = 'C:\\Users\\camer\\Downloads\\credentials.yml'
+try:
+    creds = load_credentials(yaml_file)
+    print("Loaded credentials:", creds)
+except yaml.YAMLError as e:
+    print(f"Error loading YAML file: {e}")
+    raise
+
+# FTP server details
+FTP_SERVER = creds['ftp']['server']
+FTP_USER = creds['ftp']['user']
+FTP_PASS = creds['ftp']['pass']
+FTP_DIR = creds['ftp']['dir']
+
+# Directory to search for files
+DIRECTORY_TO_DOWNLOAD = 'Archived EX-003 Master Voter List/2020_General'
+
+# Updated file pattern to match for the ZIP files (using regex for parts)
+# Added a space before 'Part' to account for the file name format
+FILE_PATTERN_ZIP = r'^EX-003_Registered_Voters_List_Public_ Part\d+\.zip$'
+
+# File pattern to match for Voter Details files within the ZIPs
+FILE_PATTERN_VOTER_DETAILS = r'.*\.txt$'
+
+# Local directory
+LOCAL_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+
+def clear_downloads_folder():
+    # Delete specific files: the downloaded gz file, zip file, and the extracted text file
+    gz_files = glob.glob(os.path.join(LOCAL_DIR, "*.gz"))
+    txt_files = glob.glob(os.path.join(LOCAL_DIR, "*.txt"))
+    zip_files = glob.glob(os.path.join(LOCAL_DIR, "*.zip"))
+    for file in gz_files + txt_files + zip_files:
+        try:
+            os.remove(file)
+        except Exception as e:
+            print(f"Error removing file {file}: {e}")
+
+def download_matching_files(directory, pattern):
+    try:
+        # Connect to FTP server using TLS
+        ftp = ftplib.FTP_TLS(FTP_SERVER)  # Use FTP_TLS for FTPS
+        ftp.set_debuglevel(2)  # Enable debug output for more details
+        ftp.auth()  # Explicitly start TLS
+        ftp.prot_p()  # Secure data connection
+        ftp.login(FTP_USER, FTP_PASS)
+        ftp.cwd(FTP_DIR)
+
+        # Change to the specified directory
+        try:
+            ftp.cwd(directory)
+        except ftplib.error_perm as e:
+            if '550' in str(e):
+                print(f"Directory {directory} not found. Listing available directories:")
+                ftp.retrlines('LIST')
+                return
+            else:
+                raise
+
+        # List files in the directory
+        files = ftp.nlst()
+        print(f"Files in directory {directory}: {files}")
+
+        # Download files that match the pattern
+        for file_name in files:
+            if re.match(pattern, file_name):
+                local_filepath = os.path.join(LOCAL_DIR, file_name)
+                with open(local_filepath, 'wb') as local_file:
+                    ftp.retrbinary(f'RETR {file_name}', local_file.write)
+                print(f"Downloaded {file_name} to {local_filepath}")
+
+                # Unzip the ZIP file
+                unzip_zip_file(local_filepath)
+            else:
+                print(f"File {file_name} does not match the pattern and will not be downloaded.")
+
+        # Close the connection
+        ftp.quit()
+
+    except ftplib.all_errors as e:
+        print(f"FTP error: {e}")
+
+def unzip_zip_file(zip_file_path):
+    try:
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(LOCAL_DIR)
+        print(f"Extracted {zip_file_path} to {LOCAL_DIR}")
+    except Exception as e:
+        print(f"Error extracting zip file: {e}")
+
+def process_voter_details_files():
+    all_voter_data = pd.DataFrame()  # DataFrame to collect voter data
+
+    # Extracting a name for the output CSV based on the directory
+    output_file_base_name = "2020_General_VF"
+    
+    # Process only the voter details files
+    for file_name in os.listdir(LOCAL_DIR):
+        if re.match(FILE_PATTERN_VOTER_DETAILS, file_name):
+            txt_file_path = os.path.join(LOCAL_DIR, file_name)
+            print(f"Processing file: {file_name}")
+            try:
+                # Determine the appropriate delimiter based on your file format (e.g., comma or tab)
+                df = pd.read_csv(txt_file_path, delimiter=',', header=0, encoding='utf-8', usecols=['VOTER_ID', 'STATUS'])
+                print(f"Processed columns from file {file_name}: {df.columns}")
+
+                # Append to the all_voter_data DataFrame
+                all_voter_data = pd.concat([all_voter_data, df], ignore_index=True)
+                print(f"Number of records in {file_name}: {len(df)}")
+                
+            except Exception as e:
+                print(f"Failed to read the file {file_name} with encoding utf-8: {e}")
+
+    # Remove duplicate VOTER_IDs to ensure distinct values
+    all_voter_data = all_voter_data.drop_duplicates(subset='VOTER_ID').reset_index(drop=True)
+
+    print(f"Total distinct records: {len(all_voter_data)}")
+
+    # Get today's date in YYYY-MM-DD format
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    # Save the Voter ID and Status to a new CSV file with a descriptive name
+    csv_file_path = os.path.join(LOCAL_DIR, f"{output_file_base_name}_Voter_ID_Status_{today}.csv")
+    all_voter_data.to_csv(csv_file_path, index=False)
+    print(f"Voter ID and Status saved to CSV file: {csv_file_path}")
+
+if __name__ == "__main__":
+    clear_downloads_folder()
+    download_matching_files(DIRECTORY_TO_DOWNLOAD, FILE_PATTERN_ZIP)
+    process_voter_details_files()  # Process voter details files
+    clear_downloads_folder()  # Clear the downloaded and extracted files after processing
